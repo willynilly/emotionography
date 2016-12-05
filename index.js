@@ -151,11 +151,6 @@ class Logger {
 	log(rowObject) {
 		this.stringifier.write(rowObject);
 	}
-	
-	end() {
-		this.stringifier.end();
-		this.outputStream.end();
-	}
 }
 
 class Opinion {
@@ -182,9 +177,6 @@ class OpinionLogger {
 		this.logger.log(opinion);
 	}
 	
-	end() {
-		this.logger.end();
-	}
 }
 
 class BehaviorLogger {
@@ -201,10 +193,7 @@ class BehaviorLogger {
 	log(behavior) {
 		this.logger.log(behavior);
 	}
-	
-	end() {
-		this.logger.end();
-	}
+
 }
 
 class Behavior {
@@ -256,7 +245,6 @@ class Group {
 			});
 			
 			if (round === rounds - 1) {
-				console.log('cool', round + 1);
 				this.logOpinions(round + 1);
 			}
 			
@@ -274,13 +262,11 @@ class Group {
 }
 
 
-let personCount = 100;
+let personCount = 30;
 let interestCount = 3;
-let roundCount = 4;
+let roundCount = 100;
 
 let behaviorLogger = new BehaviorLogger('behaviors.csv');
 let opinionLogger = new OpinionLogger('opinions.csv');
 let group = new Group(personCount, interestCount, behaviorLogger, opinionLogger);
 group.interact(roundCount);
-//opinionLogger.end();
-//behaviorLogger.end();
