@@ -1,0 +1,16 @@
+{
+  "name": "lonely",
+  "version": "1.0.0",
+  "description": "A loneliness social network simulator.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Will Riley <will@quietsimple.com> (http://willriley.net/)",
+  "license": "ISC",
+  "dependencies": {
+    "csv": "^1.1.0",
+    "gaussian": "^1.1.0",
+    "lodash": "^4.17.2"
+  }
+}
