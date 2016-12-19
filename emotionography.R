@@ -75,31 +75,44 @@ edges$weight = aggBehaviorDF$zTotalEmotionalValence
 
 nodes = unique(c(aggBehaviorDF$fromPersonId, aggBehaviorDF$toPersonId)) 
 net = graph.data.frame(d=edges, vertices=nodes, directed=T)
+V(net)$label = V(net)$name
 
 # compute a pagerank of the edge weights
-nodes$pagerank = page.rank(net)$vector
-inDegree = degree(net, mode="in")
-outDegree = degree(net, mode="out")
-V(net)$scaledpagerank = scale(nodes$pagerank, center = TRUE, scale = TRUE)
-
+V(net)$pagerank = page.rank(net)$vector
+V(net)$inDegree = degree(net, mode="in")
+V(net)$outDegree = degree(net, mode="out")
+V(net)$scaledpagerank = scale(V(net)$pagerank, center = TRUE, scale = TRUE)
 V(net)$size = abs(V(net)$scaledpagerank * 20)
 
-minWeightToView = 2.2;
-net.sp = delete.edges(net, E(net)[abs(weight) < minWeightToView])
-E(net.sp)$edge.color = c("red", "green")[(E(net.sp)$weight > 0) + 1]
+filterEdgesByWeight = function(net, minWeight, maxWeight) {
+  return(delete.edges(net, E(net)[weight > minWeight & weight < maxWeight]))
+}
+
+getTwoColorsByThreshold = function(values, threshold, colors=c("red", "green")) {
+  colors[(values > threshold) + 1]
+}
+
+getThreeColorsByThreshold = function(values, lowerThreshold, upperThreshold, colors=c("white", "red", "green")) {
+  colorsIndex = rep(1, length(values))
+  colorsIndex = colorsIndex + (values < lowerThreshold)
+  colorsIndex = colorsIndex + (2*(values > upperThreshold))
+  return(colors[colorsIndex])
+}
+
+getEdgeColors = function(net, threshold) {
+  getTwoColorsByThreshold(E(net)$weight, threshold)
+}
 
 # color the nodes 
 # red if their scaledpagerank are below a lower threshold of standard deviations
 # green if they are above an upper threshold
 # otherwise color them white
 getVertexColors = function(net, lowerThreshold, upperThreshold) {
-  colors = c("white", "red", "green");
-  colorsIndex = rep(1, vcount(net))
-  colorsIndex = colorsIndex + (V(net)$scaledpagerank < lowerThreshold)
-  colorsIndex = colorsIndex + 2*(V(net)$scaledpagerank > upperThreshold)
-  return(colors[colorsIndex])
+  return(getThreeColorsByThreshold(V(net)$scaledpagerank, lowerThreshold, upperThreshold))
 }
 
+net.sp = filterEdgesByWeight(net, -2.2, 2.2)
+E(net.sp)$edge.color = getEdgeColors(net.sp, 0);
 V(net.sp)$color = getVertexColors(net.sp, -2, 2)
 E(net.sp)$edge.width = abs(E(net.sp)$weight) 
 
@@ -112,12 +125,13 @@ createCircleLayoutWithoutVertexOverlap = function(g) {
   totWeight = sum(weights)
   upperRads=0;
   lowerRads=0;
+  radius = max(weights)
   for(i in 1:nrow(circlelayout)) {
     curWeight = curWeight + weights[i]
     upperRads = 2*pi * (curWeight / totWeight)
     rads = mean(c(lowerRads, upperRads))
-    circlelayout[i,] = c(cos(rads), sin(rads))
-    lowerRads = upperRads
+    circlelayout[i,] = c(cos(rads) * radius, sin(rads) * radius * .2 + radius^2)
+    lowerRads = upperRads;
   }
   return(circlelayout)
 }
