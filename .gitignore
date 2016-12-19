@@ -1,3 +1,5 @@
 node_modules
 *.csv
+*.RData
+*.Rhistory
 !example-data/*.csv
