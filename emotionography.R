@@ -1,7 +1,7 @@
 # clear all environment variables
 rm(list=ls())
 
-library("rgexf")
+library(rgexf)
 library(igraph) # Load the igraph package
 library(data.table) # Load the data.table package
 
@@ -77,11 +77,77 @@ nodes = unique(c(aggBehaviorDF$fromPersonId, aggBehaviorDF$toPersonId))
 net = graph.data.frame(d=edges, vertices=nodes, directed=T)
 V(net)$label = V(net)$name
 
-# compute a pagerank of the edge weights
-V(net)$pagerank = page.rank(net)$vector
-V(net)$inDegree = degree(net, mode="in")
-V(net)$outDegree = degree(net, mode="out")
-V(net)$scaledpagerank = scale(V(net)$pagerank, center = TRUE, scale = TRUE)
+attachVertexStats = function(net) {
+  # compute a pagerank of the edge weights
+  V(net)$pagerank = page.rank(net)$vector
+  V(net)$inDegree = degree(net, mode="in")
+  V(net)$outDegree = degree(net, mode="out")
+  V(net)$scaledpagerank = scale(V(net)$pagerank, center = TRUE, scale = TRUE)
+  
+  positiveBehaviorsReceivedCount = rep(0, vcount(net))
+  negativeBehaviorsReceivedCount = rep(0, vcount(net))
+  positiveBehaviorsReceivedSum = rep(0, vcount(net))
+  negativeBehaviorsReceivedSum = rep(0, vcount(net))
+  averageEmotionalValenceReceived = rep(0, vcount(net))
+  medianEmotionalValenceReceived = rep(0, vcount(net))
+  sdEmotionalValenceReceived = rep(0, vcount(net))
+  
+  positiveBehaviorsExpressedCount = rep(0, vcount(net))
+  negativeBehaviorsExpressedCount = rep(0, vcount(net))
+  positiveBehaviorsExpressedSum = rep(0, vcount(net))
+  negativeBehaviorsExpressedSum = rep(0, vcount(net))
+  averageEmotionalValenceExpressed = rep(0, vcount(net))
+  medianEmotionalValenceExpressed = rep(0, vcount(net))
+  sdEmotionalValenceExpressed = rep(0, vcount(net))
+  
+  for(v in V(net)) {
+    inEdges = E(net)[incident(net, v, mode = "in")]
+    outEdges = E(net)[incident(net, v, mode = "out")]
+    inWeights = inEdges$weight
+    outWeights = outEdges$weight
+    
+    positiveBehaviorsReceivedWeights = inWeights[inWeights > 0]
+    negativeBehaviorsReceivedWeights = inWeights[inWeights < 0]
+    positiveBehaviorsExpressedWeights = outWeights[inWeights > 0]
+    negativeBehaviorsExpressedWeights = outWeights[inWeights < 0]
+      
+    positiveBehaviorsReceivedCount[v] = length(positiveBehaviorsReceivedWeights)  
+    negativeBehaviorsReceivedCount[v] = length(negativeBehaviorsReceivedWeights)
+    positiveBehaviorsReceivedSum[v] = sum(positiveBehaviorsReceivedWeights)
+    negativeBehaviorsReceivedSum[v] = sum(negativeBehaviorsReceivedWeights)
+    averageEmotionalValenceReceived[v] = mean(inWeights)
+    medianEmotionalValenceReceived[v] = median(inWeights)
+    sdEmotionalValenceReceived[v] = sd(inWeights)
+    
+    positiveBehaviorsExpressedCount[v] = length(positiveBehaviorsExpressedWeights)
+    negativeBehaviorsExpressedCount[v] = length(negativeBehaviorsExpressedWeights)
+    positiveBehaviorsExpressedSum[v] = sum(positiveBehaviorsExpressedWeights)
+    negativeBehaviorsExpressedSum[v] = sum(negativeBehaviorsExpressedWeights)
+    averageEmotionalValenceExpressed[v] = mean(outWeights)
+    medianEmotionalValenceExpressed[v] = median(outWeights)
+    sdEmotionalValenceExpressed[v] = sd(outWeights)
+  }
+  
+  V(net)$positiveBehaviorsReceivedCount = positiveBehaviorsReceivedCount
+  V(net)$negativeBehaviorsReceivedCount = negativeBehaviorsReceivedCount
+  V(net)$positiveBehaviorsReceivedSum = positiveBehaviorsReceivedSum
+  V(net)$negativeBehaviorsReceivedSum = negativeBehaviorsReceivedSum
+  V(net)$averageEmotionalValenceReceived = averageEmotionalValenceReceived
+  V(net)$medianEmotionalValenceReceived = medianEmotionalValenceReceived
+  V(net)$sdEmotionalValenceReceived = sdEmotionalValenceReceived
+  
+  V(net)$positiveBehaviorsExpressedCount = positiveBehaviorsExpressedCount
+  V(net)$negativeBehaviorsExpressedCount = negativeBehaviorsExpressedCount
+  V(net)$positiveBehaviorsExpressedSum = positiveBehaviorsExpressedSum
+  V(net)$negativeBehaviorsExpressedSum = negativeBehaviorsExpressedSum
+  V(net)$averageEmotionalValenceExpressed = averageEmotionalValenceExpressed
+  V(net)$medianEmotionalValenceExpressed = medianEmotionalValenceExpressed
+  V(net)$sdEmotionalValenceExpressed = sdEmotionalValenceExpressed
+  
+  return(net)
+}
+
+net = attachVertexStats(net)
 V(net)$size = abs(V(net)$scaledpagerank * 20)
 
 filterEdgesByWeight = function(net, minWeight, maxWeight) {
@@ -121,35 +187,44 @@ par(mar=c(0,0,0,0))
 createCircleLayoutWithoutVertexOverlap = function(g) {
   circlelayout = layout.circle(g)
   curWeight = 0;
-  weights = V(g)$size * 2
+  weights = V(g)$size
   totWeight = sum(weights)
   upperRads=0;
   lowerRads=0;
-  radius = max(weights)
   for(i in 1:nrow(circlelayout)) {
     curWeight = curWeight + weights[i]
     upperRads = 2*pi * (curWeight / totWeight)
     rads = mean(c(lowerRads, upperRads))
-    circlelayout[i,] = c(cos(rads) * radius, sin(rads) * radius * .2 + radius^2)
+    circlelayout[i,] = c(cos(rads), sin(rads))
     lowerRads = upperRads;
   }
   return(circlelayout)
 }
 
-circlelayout = createCircleLayoutWithoutVertexOverlap(net.sp)
+circleLayout = createCircleLayoutWithoutVertexOverlap(net.sp)
 
 plot(net.sp,
           edge.arrow.size=.2, 
           edge.curved = .5,
           edge.color = E(net.sp)$edge.color,
           edge.width = E(net.sp)$edge.width,
-          vertex.size = V(net.sp)$size * 1.2,
+          vertex.size = V(net.sp)$size,
           vertex.color= adjustcolor(V(net.sp)$color, alpha.f = .5), 
           vertex.frame.color="#555555",
           vertex.label=V(net.sp)$id, 
           vertex.label.color="black",
           vertex.label.cex=.6, 
-          layout=circlelayout) 
+          layout=circleLayout) 
+
+# save vertices of graph
+saveVertices = function(net, fileName) {
+  vertexList = lapply(list.vertex.attributes(net),function(x) get.vertex.attribute(net,x))
+  vertexDataFrame = cbind.data.frame(vertexList)
+  colnames(vertexDataFrame) = list.vertex.attributes(net)
+  write.csv(vertexDataFrame, file=fileName)
+}
+
+saveVertices(net, "people.csv")
 
 # export behavior dataas gexf so it can be loaded into gephi
 
