@@ -1,9 +1,15 @@
 # clear all environment variables
 rm(list=ls())
 
-library(rgexf)
-library(igraph) # Load the igraph package
-library(data.table) # Load the data.table package
+# install and load all required packages
+list.of.packages <- c("data.table", "igraph", "rgexf")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+lapply(list.of.packages, require, character.only = TRUE)
+
+# library(rgexf)
+# library(igraph) # Load the igraph package
+# library(data.table) # Load the data.table package
 
 # load behavior data
 setwd("~/Work/emotionography/example-data")
@@ -177,9 +183,13 @@ getVertexColors = function(net, lowerThreshold, upperThreshold) {
   return(getThreeColorsByThreshold(V(net)$scaledpagerank, lowerThreshold, upperThreshold))
 }
 
-net.sp = filterEdgesByWeight(net, -2.2, 2.2)
+lowerEdgeWeight = -2.1
+upperEdgeWeight = 2.1
+lowerVertexWeight = -2
+upperVertexWeight = 2
+net.sp = filterEdgesByWeight(net, lowerEdgeWeight, upperEdgeWeight)
 E(net.sp)$edge.color = getEdgeColors(net.sp, 0);
-V(net.sp)$color = getVertexColors(net.sp, -2, 2)
+V(net.sp)$color = getVertexColors(net.sp, lowerVertexWeight, upperVertexWeight)
 E(net.sp)$edge.width = abs(E(net.sp)$weight) 
 
 par(mar=c(0,0,0,0))
